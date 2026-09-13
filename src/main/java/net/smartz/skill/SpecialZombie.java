@@ -15,177 +15,97 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class SpecialZombie {
 
-    private static final String SPECIAL_TAG =
-            "SmartZombieSpecial";
+    private static final String SPECIAL_TAG = "SmartZombieSpecial";
 
-    private static final String DODGE_COOLDOWN =
-            "SmartZombieDodgeCooldown";
-
-    private static final String DODGE_TIME =
-            "SmartZombieDodgeTime";
-
-    private static final String DODGE_DIRECTION =
-            "SmartZombieDodgeDirection";
+    private static final String DODGE_COOLDOWN = "SmartZombieDodgeCooldown";
+    private static final String DODGE_TIME = "SmartZombieDodgeTime";
+    private static final String DODGE_DIRECTION = "SmartZombieDodgeDirection";
 
 
     @SubscribeEvent
-    public static void onZombieSpawn(
-            EntityJoinLevelEvent event) {
+    public static void onZombieSpawn(EntityJoinLevelEvent event) {
 
-        if (event.getLevel().isClientSide()) {
-            return;
-        }
+        if (event.getLevel().isClientSide()) return;
+        if (!(event.getEntity() instanceof Zombie zombie)) return;
+        if (!ZombieConfig.SPECIAL_ZOMBIE_ENABLED.get()) return;
 
-        if (!(event.getEntity() instanceof Zombie zombie)) {
-            return;
-        }
+        // ต้องมี Skill Dodge
+        if (!ZombieSkillManager.hasSkill(zombie, ZombieSkill.DODGE)) return;
 
-        if (!ZombieConfig.SPECIAL_ZOMBIE_ENABLED.get()) {
-            return;
-        }
-
-        // ถ้าเป็นตัวพิเศษอยู่แล้ว
-        if (!ZombieSkillManager.hasSkill(
-                zombie,
-                ZombieSkill.DODGE)) {
-            return;
-        }
-
-        // สุ่มเกิดเป็น Special Zombie
-        if (ThreadLocalRandom.current().nextDouble()
-                > ZombieConfig.SPECIAL_ZOMBIE_CHANCE.get()) {
-            return;
-        }
+        // สุ่มว่า Zombie ตัวนี้จะเป็น Special Zombie หรือไม่
+        if (ThreadLocalRandom.current().nextDouble() > ZombieConfig.SPECIAL_ZOMBIE_CHANCE.get()) return;
 
         makeSpecial(zombie);
     }
 
-    private static void makeSpecial(
-            Zombie zombie) {
+    private static void makeSpecial(Zombie zombie) {
 
-        // Mark
         zombie.addTag(SPECIAL_TAG);
 
-
-        AttributeInstance speed =
-                zombie.getAttribute(
-                        Attributes.MOVEMENT_SPEED
-                );
+        AttributeInstance speed = zombie.getAttribute(Attributes.MOVEMENT_SPEED);
 
         if (speed != null) {
-
-            speed.setBaseValue(
-                    ZombieConfig.SPECIAL_ZOMBIE_SPEED.get()
-            );
+            speed.setBaseValue(ZombieConfig.SPECIAL_ZOMBIE_SPEED.get());
         }
 
-        zombie.getPersistentData().putInt(
-                DODGE_COOLDOWN,
-                0
-        );
-
-        zombie.getPersistentData().putInt(
-                DODGE_TIME,
-                0
-        );
-
+        zombie.getPersistentData().putInt(DODGE_COOLDOWN, 0);
+        zombie.getPersistentData().putInt(DODGE_TIME, 0);
     }
 
-
     @SubscribeEvent
-    public static void onLivingTick(
-            LivingEvent.LivingTickEvent event) {
+    public static void onLivingTick(LivingEvent.LivingTickEvent event) {
 
-        if (!(event.getEntity() instanceof Zombie zombie)) {
-            return;
-        }
+        if (!(event.getEntity() instanceof Zombie zombie)) return;
+        if (zombie.level().isClientSide()) return;
+        if (!isSpecial(zombie)) return;
 
-        if (zombie.level().isClientSide()) {
-            return;
-        }
-
-        if (!isSpecial(zombie)) {
-            return;
-        }
-
-        // Particle
         spawnParticle(zombie);
 
-        // Dodge
         if (ZombieConfig.SPECIAL_ZOMBIE_DODGE_ENABLED.get()) {
-
             handleDodge(zombie);
         }
     }
 
-    private static void handleDodge(
-            Zombie zombie) {
+    private static void handleDodge(Zombie zombie) {
 
-        if (!(zombie.getTarget() instanceof Player player)) {
-            return;
-        }
+        if (!(zombie.getTarget() instanceof Player player)) return;
 
-        double distance =
-                zombie.distanceTo(player);
+        double distance = zombie.distanceTo(player);
 
         // ต้องอยู่ในระยะที่สามารถหลบได้
-        if (distance > 16.0D) {
-            return;
-        }
+        if (distance > 16.0D) return;
 
-        int dodgeTime =
-                zombie.getPersistentData()
-                        .getInt(DODGE_TIME);
+        int dodgeTime = zombie.getPersistentData().getInt(DODGE_TIME);
 
         if (dodgeTime > 0) {
 
             dodgeTime--;
 
-            zombie.getPersistentData().putInt(
-                    DODGE_TIME,
-                    dodgeTime
-            );
+            zombie.getPersistentData().putInt(DODGE_TIME, dodgeTime);
 
-            // ถ้าถึงจุดหลบแล้ว
+            // ถ้าถึงจุดหลบแล้ว หยุดสถานะ Dodge
             if (zombie.getNavigation().isDone()) {
-
-                zombie.getPersistentData().putInt(
-                        DODGE_TIME,
-                        0
-                );
+                zombie.getPersistentData().putInt(DODGE_TIME, 0);
             }
 
             return;
         }
 
-        int cooldown =
-                zombie.getPersistentData()
-                        .getInt(DODGE_COOLDOWN);
+        int cooldown = zombie.getPersistentData().getInt(DODGE_COOLDOWN);
 
         if (cooldown > 0) {
 
-            zombie.getPersistentData().putInt(
-                    DODGE_COOLDOWN,
-                    cooldown - 1
-            );
+            zombie.getPersistentData().putInt(DODGE_COOLDOWN, cooldown - 1);
 
-            // ระหว่าง cooldown ยังวิ่งเข้าหา Player
-            zombie.getNavigation().moveTo(
-                    player,
-                    1.0D
-            );
+            // ระหว่าง Cooldown ยังวิ่งเข้าหา Player
+            zombie.getNavigation().moveTo(player, 1.0D);
 
             return;
         }
 
-        if (!isPlayerLookingAtZombie(
-                player,
-                zombie)) {
+        if (!isPlayerLookingAtZombie(player, zombie)) {
 
-            zombie.getNavigation().moveTo(
-                    player,
-                    1.0D
-            );
+            zombie.getNavigation().moveTo(player, 1.0D);
 
             return;
         }
@@ -195,9 +115,8 @@ public class SpecialZombie {
             return;
         }
 
-        int direction =
-                zombie.getPersistentData()
-                        .getInt(DODGE_DIRECTION);
+
+        int direction = zombie.getPersistentData().getInt(DODGE_DIRECTION);
 
         if (direction == 0) {
             direction = 1;
@@ -205,19 +124,9 @@ public class SpecialZombie {
             direction = -direction;
         }
 
-        zombie.getPersistentData().putInt(
-                DODGE_DIRECTION,
-                direction
-        );
+        zombie.getPersistentData().putInt(DODGE_DIRECTION, direction);
 
-
-        Vec3 dodgePosition =
-                calculateDodgePosition(
-                        zombie,
-                        player,
-                        direction
-                );
-
+        Vec3 dodgePosition = calculateDodgePosition(zombie, player, direction);
 
         zombie.getNavigation().moveTo(
                 dodgePosition.x,
@@ -237,133 +146,80 @@ public class SpecialZombie {
         );
     }
 
-    private static boolean isPlayerLookingAtZombie(
-            Player player,
-            Zombie zombie) {
+    private static boolean isPlayerLookingAtZombie(Player player, Zombie zombie) {
 
-        Vec3 eyes =
-                player.getEyePosition();
+        Vec3 eyes = player.getEyePosition();
 
-        Vec3 target =
-                zombie.position()
-                        .add(
-                                0,
-                                zombie.getBbHeight() * 0.5,
-                                0
-                        );
+        Vec3 target = zombie.position().add(
+                0,
+                zombie.getBbHeight() * 0.5,
+                0
+        );
 
-        Vec3 direction =
-                target
-                        .subtract(eyes)
-                        .normalize();
+        Vec3 direction = target.subtract(eyes).normalize();
+        Vec3 look = player.getLookAngle().normalize();
 
-        Vec3 look =
-                player.getLookAngle()
-                        .normalize();
-
-        double dot =
-                look.dot(direction);
+        double dot = look.dot(direction);
 
         return dot > 0.85D;
     }
+
 
     private static Vec3 calculateDodgePosition(
             Zombie zombie,
             Player player,
             int direction) {
 
-        // Vector จาก Player → Zombie
-        Vec3 away =
-                zombie.position()
-                        .subtract(player.position());
-
-        away = new Vec3(
-                away.x,
-                0,
-                away.z
-        );
+        // Vector จาก Player -> Zombie
+        Vec3 away = zombie.position().subtract(player.position());
+        away = new Vec3(away.x, 0, away.z);
 
         if (away.lengthSqr() < 0.001D) {
-            away = new Vec3(
-                    0,
-                    0,
-                    1
-            );
+            away = new Vec3(0, 0, 1);
         }
 
         away = away.normalize();
 
-        Vec3 side =
-                new Vec3(
-                        -away.z,
-                        0,
-                        away.x
-                ).normalize();
 
-        side =
-                side.scale(direction);
-
-        double dodgeDistance =
-                ZombieConfig.SPECIAL_ZOMBIE_DODGE_DISTANCE.get();
+        // Vector ด้านข้าง
+        Vec3 side = new Vec3(-away.z, 0, away.x).normalize();
+        side = side.scale(direction);
 
 
-        double distance =
-                zombie.distanceTo(player);
+        // ระยะหลบพื้นฐาน
+        double dodgeDistance = ZombieConfig.SPECIAL_ZOMBIE_DODGE_DISTANCE.get();
 
-        double intensity =
-                1.0D -
-                        Math.min(
-                                distance / 12.0D,
-                                1.0D
-                        );
+        double distance = zombie.distanceTo(player);
 
-        // ทำให้ช่วงใกล้แรงขึ้น
-        intensity =
-                intensity * intensity;
+        // ยิ่ง Player อยู่ใกล้ ยิ่งหลบไกลขึ้น
+        double intensity = 1.0D - Math.min(distance / 12.0D, 1.0D);
+        intensity = intensity * intensity;
 
-        dodgeDistance +=
-                dodgeDistance * intensity;
+        dodgeDistance += dodgeDistance * intensity;
 
-        // จำกัดไม่ให้ไกลเกินไป
-        dodgeDistance =
-                Math.min(
-                        dodgeDistance,
-                        6.0D
-                );
+        // จำกัดระยะสูงสุด
+        dodgeDistance = Math.min(dodgeDistance, 6.0D);
 
 
-        Vec3 target =
-                zombie.position()
-                        .add(
-                                side.x * dodgeDistance,
-                                0,
-                                side.z * dodgeDistance
-                        );
+        Vec3 target = zombie.position().add(
+                side.x * dodgeDistance,
+                0,
+                side.z * dodgeDistance
+        );
 
         return target;
     }
 
-    private static void spawnParticle(
-            Zombie zombie) {
 
-        if (!ZombieConfig.SPECIAL_ZOMBIE_PARTICLE.get()) {
-            return;
-        }
+    private static void spawnParticle(Zombie zombie) {
 
-        if (!(zombie.level()
-                instanceof ServerLevel level)) {
-            return;
-        }
+        if (!ZombieConfig.SPECIAL_ZOMBIE_PARTICLE.get()) return;
+        if (!(zombie.level() instanceof ServerLevel level)) return;
 
-        // ใช้ Particle แบบ Dust
-        // ค่า RGB = 0,0,0
+        // Particle สีดำ
         net.minecraft.core.particles.DustParticleOptions black =
                 new net.minecraft.core.particles.DustParticleOptions(
-                        new org.joml.Vector3f(
-                                0.0F,
-                                0.0F,
-                                0.0F
-                        ),
+                        new org.joml.Vector3f(0.0F, 0.0F, 0.0F),
                         1.5F
                 );
 
@@ -381,10 +237,7 @@ public class SpecialZombie {
     }
 
 
-    public static boolean isSpecial(
-            Zombie zombie) {
-
-        return zombie.getTags()
-                .contains(SPECIAL_TAG);
+    public static boolean isSpecial(Zombie zombie) {
+        return zombie.getTags().contains(SPECIAL_TAG);
     }
 }

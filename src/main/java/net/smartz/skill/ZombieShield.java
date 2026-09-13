@@ -1,53 +1,27 @@
 package net.smartz.skill;
 
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.monster.Zombie;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.smartz.attributes.ZombieConfig;
 
-import java.util.Random;
-
 public class ZombieShield {
-
-    private static final Random RANDOM = new Random();
 
     @SubscribeEvent
     public static void onZombieSpawn(EntityJoinLevelEvent event) {
 
-        // Server เท่านั้น
-        if (event.getLevel().isClientSide()) {
-            return;
-        }
+        if (event.getLevel().isClientSide()) return;
+        if (!(event.getEntity() instanceof Zombie zombie)) return;
+        if (!ZombieConfig.SHIELD_ENABLED.get()) return;
 
-        // ต้องเป็น Zombie
-        if (!(event.getEntity() instanceof Zombie zombie)) {
-            return;
-        }
+        if (!ZombieSkillManager.hasSkill(zombie, ZombieSkill.SHIELD)) return;
 
-        // ระบบถูกปิด
-        if (!ZombieConfig.SHIELD_ENABLED.get()) {
-            return;
-        }
+        ItemStack shield = new ItemStack(Items.SHIELD);
 
-        // สุ่มโอกาส
-        if (RANDOM.nextDouble() >
-                ZombieConfig.SHIELD_CHANCE.get()) {
-            return;
-        }
-
-        ItemStack shield =
-                new ItemStack(Items.SHIELD);
-
-        zombie.setItemSlot(
-                net.minecraft.world.entity.EquipmentSlot.OFFHAND,
-                shield
-        );
-
-        zombie.setDropChance(
-                net.minecraft.world.entity.EquipmentSlot.OFFHAND,
-                0.0F
-        );
+        zombie.setItemSlot(EquipmentSlot.OFFHAND, shield);
+        zombie.setDropChance(EquipmentSlot.OFFHAND, 0.0F);
     }
 }
