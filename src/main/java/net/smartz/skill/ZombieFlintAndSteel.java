@@ -21,190 +21,117 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class ZombieFlintAndSteel {
 
-    private static final Map<UUID, Integer> COOLDOWNS =
-            new HashMap<>();
+    private static final Map<UUID, Integer> COOLDOWNS = new HashMap<>();
 
 
     @SubscribeEvent
-    public static void onZombieSpawn(
-            EntityJoinLevelEvent event) {
+    public static void onZombieSpawn(EntityJoinLevelEvent event) {
 
-        if (event.getLevel().isClientSide()) {
-            return;
-        }
+        if (event.getLevel().isClientSide()) return;
+        if (!(event.getEntity() instanceof Zombie zombie)) return;
+        if (!ZombieConfig.FLINT_ENABLED.get()) return;
 
-        if (!(event.getEntity() instanceof Zombie zombie)) {
-            return;
-        }
-
-        if (!ZombieConfig.FLINT_ENABLED.get()) {
-            return;
-        }
-
-        // ถ้ามี Flint อยู่แล้ว ไม่ต้องเพิ่ม
+        // ถ้ามี Flint and Steel อยู่แล้ว
         if (zombie.getMainHandItem().is(Items.FLINT_AND_STEEL)
                 || zombie.getOffhandItem().is(Items.FLINT_AND_STEEL)) {
             return;
         }
 
-        // โอกาสเกิดมาพร้อม Flint
-        if (ThreadLocalRandom.current().nextDouble()
-                > ZombieConfig.FLINT_CHANCE.get()) {
-            return;
-        }
+        // โอกาสเกิดพร้อม Flint and Steel
+        if (!ZombieSkillManager.hasSkill(zombie, ZombieSkill.FLINT_AND_STEEL)) return;
 
-        ItemStack flint =
-                new ItemStack(Items.FLINT_AND_STEEL);
+        ItemStack flint = new ItemStack(Items.FLINT_AND_STEEL);
 
-        zombie.setItemSlot(
-                EquipmentSlot.MAINHAND,
-                flint
-        );
+        zombie.setItemSlot(EquipmentSlot.MAINHAND, flint);
+        zombie.setDropChance(EquipmentSlot.MAINHAND, 0.0F);
 
-        zombie.setDropChance(
-                EquipmentSlot.MAINHAND,
-                0.0F
-        );
-
-        COOLDOWNS.put(
-                zombie.getUUID(),
-                20
-        );
+        COOLDOWNS.put(zombie.getUUID(), 20);
     }
 
+
     @SubscribeEvent
-    public static void onLivingTick(
-            LivingEvent.LivingTickEvent event) {
+    public static void onLivingTick(LivingEvent.LivingTickEvent event) {
 
-        if (!(event.getEntity() instanceof Zombie zombie)) {
-            return;
-        }
+        if (!(event.getEntity() instanceof Zombie zombie)) return;
+        if (!ZombieSkillManager.hasSkill(zombie, ZombieSkill.FLINT_AND_STEEL)) return;
+        if (zombie.level().isClientSide()) return;
+        if (!ZombieConfig.FLINT_ENABLED.get()) return;
 
-        if (!ZombieSkillManager.hasSkill(
-                zombie,
-                ZombieSkill.FLINT_AND_STEEL)) {
-            return;
-        }
-
-        if (zombie.level().isClientSide()) {
-            return;
-        }
-
-        if (!ZombieConfig.FLINT_ENABLED.get()) {
-            return;
-        }
-
-        // ต้องถือ Flint
-        if (!zombie.getMainHandItem().is(
-                Items.FLINT_AND_STEEL)) {
-            return;
-        }
+        // ต้องถือ Flint and Steel
+        if (!zombie.getMainHandItem().is(Items.FLINT_AND_STEEL)) return;
 
         UUID uuid = zombie.getUUID();
 
-
-        int cooldown =
-                COOLDOWNS.getOrDefault(uuid, 0);
+        int cooldown = COOLDOWNS.getOrDefault(uuid, 0);
 
         if (cooldown > 0) {
-
-            COOLDOWNS.put(
-                    uuid,
-                    cooldown - 1
-            );
-
+            COOLDOWNS.put(uuid, cooldown - 1);
             return;
         }
 
-
-        LivingEntity target =
-                zombie.getTarget();
+        LivingEntity target = zombie.getTarget();
 
         if (target == null) {
             resetCooldown(zombie);
             return;
         }
 
-        // ต้องเป็นผู้เล่น
+        // ต้องเป็น Player
         if (!(target instanceof net.minecraft.world.entity.player.Player)) {
             resetCooldown(zombie);
             return;
         }
 
-        double distance =
-                zombie.distanceTo(target);
+        double distance = zombie.distanceTo(target);
 
         if (distance > ZombieConfig.FLINT_RANGE.get()) {
             resetCooldown(zombie);
             return;
         }
-
 
         if (!zombie.hasLineOfSight(target)) {
             resetCooldown(zombie);
             return;
         }
 
-
-        tryLightPlayer(
-                zombie,
-                target
-        );
-
+        tryLightPlayer(zombie, target);
 
         resetCooldown(zombie);
     }
 
 
-    private static void tryLightPlayer(
-            Zombie zombie,
-            LivingEntity target) {
+    private static void tryLightPlayer(Zombie zombie, LivingEntity target) {
 
         Level level = zombie.level();
 
-        double distance =
-                zombie.distanceTo(target);
+        double distance = zombie.distanceTo(target);
 
-        // ต้องอยู่ในระยะ 1-2 บล็อก
-        if (distance > ZombieConfig.FLINT_RANGE.get()) {
-            return;
-        }
-
-        // ตำแหน่งผู้เล่น
-        BlockPos playerPos =
-                target.blockPosition();
+        // ต้องอยู่ในระยะที่กำหนด
+        if (distance > ZombieConfig.FLINT_RANGE.get()) return;
 
 
+        // ตำแหน่ง Player
+        BlockPos playerPos = target.blockPosition();
+
+
+        // ลองจุดไฟตรงตำแหน่ง Player
         if (canPlaceFire(level, playerPos)) {
-
-            placeFire(
-                    level,
-                    playerPos,
-                    zombie
-            );
-
+            placeFire(level, playerPos, zombie);
             return;
         }
 
-        Direction playerDirection =
-                target.getDirection();
 
-        BlockPos front =
-                playerPos.relative(playerDirection);
+        // ถ้าจุดตรงตำแหน่ง Player ไม่ได้ ลองจุดด้านหน้า
+        Direction playerDirection = target.getDirection();
+        BlockPos front = playerPos.relative(playerDirection);
 
         if (canPlaceFire(level, front)) {
-
-            placeFire(
-                    level,
-                    front,
-                    zombie
-            );
+            placeFire(level, front, zombie);
         }
     }
 
 
-    private static void resetCooldown(
-            Zombie zombie) {
+    private static void resetCooldown(Zombie zombie) {
 
         COOLDOWNS.put(
                 zombie.getUUID(),
@@ -212,46 +139,31 @@ public class ZombieFlintAndSteel {
         );
     }
 
-    private static boolean canPlaceFire(
-            Level level,
-            BlockPos pos) {
 
-        if (!level.isEmptyBlock(pos)) {
-            return false;
-        }
+    private static boolean canPlaceFire(Level level, BlockPos pos) {
 
-        BlockPos below =
-                pos.below();
+        // ต้องเป็นพื้นที่ว่าง
+        if (!level.isEmptyBlock(pos)) return false;
 
-        return level.getBlockState(below)
-                .isFaceSturdy(
-                        level,
-                        below,
-                        Direction.UP
-                );
+        BlockPos below = pos.below();
+
+        // Block ด้านล่างต้องรองรับไฟได้
+        return level.getBlockState(below).isFaceSturdy(level, below, Direction.UP);
     }
 
-    private static void placeFire(
-            Level level,
-            BlockPos pos,
-            Zombie zombie) {
 
-        level.setBlockAndUpdate(
-                pos,
-                Blocks.FIRE.defaultBlockState()
-        );
+    private static void placeFire(Level level, BlockPos pos, Zombie zombie) {
 
-        ItemStack flint =
-                zombie.getMainHandItem();
+        level.setBlockAndUpdate(pos, Blocks.FIRE.defaultBlockState());
+
+        ItemStack flint = zombie.getMainHandItem();
 
         if (flint.is(Items.FLINT_AND_STEEL)) {
 
             flint.hurtAndBreak(
                     1,
                     zombie,
-                    entity -> entity.broadcastBreakEvent(
-                            EquipmentSlot.MAINHAND
-                    )
+                    entity -> entity.broadcastBreakEvent(EquipmentSlot.MAINHAND)
             );
         }
     }
