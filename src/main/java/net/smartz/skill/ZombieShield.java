@@ -15,8 +15,9 @@ public class ZombieShield {
 
         if (event.getLevel().isClientSide()) return;
         if (!(event.getEntity() instanceof Zombie zombie)) return;
+        long day = event.getLevel().getDayTime() / 24000L;
+        if(!(day >= ZombieConfig.START_DAY_SHIELD.get())) return;
         if (!ZombieConfig.SHIELD_ENABLED.get()) return;
-
         if (!ZombieSkillManager.hasSkill(zombie, ZombieSkill.SHIELD)) return;
 
         ItemStack shield = new ItemStack(Items.SHIELD);

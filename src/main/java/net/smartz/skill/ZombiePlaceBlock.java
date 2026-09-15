@@ -22,7 +22,8 @@ public class ZombiePlaceBlock {
         if(zombie.level().isClientSide()){
             return;
         }
-
+        long day = event.getLevel().getDayTime() / 24000L;
+        if(!(day >= ZombieConfig.START_DAY_PLACE_BLOCK.get())) return;
         if (!ZombieConfig.BLOCK_PLACE_ENABLED.get()) {
             return;
         }

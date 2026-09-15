@@ -28,6 +28,8 @@ public class ZombieBlockBreak {
 
         if (event.getLevel().isClientSide()) return;
         if (!(event.getEntity() instanceof Zombie zombie)) return;
+        long day = event.getLevel().getDayTime() / 24000L;
+        if(!(day >= ZombieConfig.START_DAY_BREAK_BLOCK.get())) return;
         if (!ZombieConfig.BLOCK_BREAK_ENABLED.get()) return;
 
         // ถ้ามี Pickaxe อยู่แล้ว
