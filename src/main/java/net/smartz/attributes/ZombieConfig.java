@@ -89,6 +89,12 @@ public class ZombieConfig {
     public static final ForgeConfigSpec.BooleanValue BLOCK_PLACE_ENABLED;
     public static final ForgeConfigSpec.IntValue ZOMBIE_PLACE_BLOCK_CHANCE;
 
+    public static final ForgeConfigSpec.IntValue START_DAY_DODGE;
+    public static final ForgeConfigSpec.IntValue START_DAY_SHIELD;
+    public static final ForgeConfigSpec.IntValue START_DAY_FLINT;
+    public static final ForgeConfigSpec.IntValue START_DAY_BREAK_BLOCK;
+    public static final ForgeConfigSpec.IntValue START_DAY_PLACE_BLOCK;
+
     static {
 
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
@@ -299,6 +305,30 @@ public class ZombieConfig {
         SHIELD_REACTION_DELAY_PER_DAY = builder
                 .comment("Change in shield reaction delay per day.")
                 .defineInRange("shield_reactionDelayPerDay", 0.1D, 0.0D, 100.0D);
+
+        builder.pop();
+
+        builder.push("progression skill");
+
+        START_DAY_DODGE = builder
+                .comment("The day when Zombie Dodge progression starts.")
+                .defineInRange("startDay", 1, 0, 100000);
+
+        START_DAY_SHIELD = builder
+                .comment("The day when Zombie Shield progression starts.")
+                .defineInRange("startDay", 1, 0, 100000);
+
+        START_DAY_FLINT = builder
+                .comment("The day when Zombie Flint progression starts.")
+                .defineInRange("startDay", 1, 0, 100000);
+
+        START_DAY_BREAK_BLOCK = builder
+                .comment("The day when Zombie Break Block progression starts.")
+                .defineInRange("startDay", 1, 0, 100000);
+
+        START_DAY_PLACE_BLOCK = builder
+                .comment("The day when Zombie Place Block progression starts.")
+                .defineInRange("startDay", 1, 0, 100000);
 
         builder.pop();
 

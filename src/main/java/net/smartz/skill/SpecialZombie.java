@@ -16,7 +16,6 @@ import java.util.concurrent.ThreadLocalRandom;
 public class SpecialZombie {
 
     private static final String SPECIAL_TAG = "SmartZombieSpecial";
-
     private static final String DODGE_COOLDOWN = "SmartZombieDodgeCooldown";
     private static final String DODGE_TIME = "SmartZombieDodgeTime";
     private static final String DODGE_DIRECTION = "SmartZombieDodgeDirection";
@@ -27,7 +26,10 @@ public class SpecialZombie {
 
         if (event.getLevel().isClientSide()) return;
         if (!(event.getEntity() instanceof Zombie zombie)) return;
-        if (!ZombieConfig.SPECIAL_ZOMBIE_ENABLED.get()) return;
+        long day = event.getLevel().getDayTime() / 24000L;
+
+        if(!(day >= ZombieConfig.START_DAY_DODGE.get())) return;
+        if (!(ZombieConfig.SPECIAL_ZOMBIE_ENABLED.get())) return;
 
         // ต้องมี Skill Dodge
         if (!ZombieSkillManager.hasSkill(zombie, ZombieSkill.DODGE)) return;

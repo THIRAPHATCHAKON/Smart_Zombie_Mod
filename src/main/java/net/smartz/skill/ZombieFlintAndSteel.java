@@ -55,6 +55,8 @@ public class ZombieFlintAndSteel {
         if (!(event.getEntity() instanceof Zombie zombie)) return;
         if (!ZombieSkillManager.hasSkill(zombie, ZombieSkill.FLINT_AND_STEEL)) return;
         if (zombie.level().isClientSide()) return;
+        long day = event.getLevel().getDayTime() / 24000L;
+        if(!(day >= ZombieConfig.START_DAY_FLINT.get())) return;
         if (!ZombieConfig.FLINT_ENABLED.get()) return;
 
         // ต้องถือ Flint and Steel
